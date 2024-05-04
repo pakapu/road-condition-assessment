@@ -1,5 +1,5 @@
 import streamlit as st
-#from streamlit_image_comparison import image_comparison
+from streamlit_image_comparison import image_comparison
 import numpy as np
 import pandas as pd
 import random
@@ -150,9 +150,8 @@ def handle_uploaded_image(uploaded_file):
         st.write(f"Manholes: {mh}")
 
         st.write("Drag the slider to see the image with/without bounding boxes")
-        #image_comparison(img1=Image.open(uploaded_file), img2=modified_image)
-        st.image(uploaded_file, caption="Before")
-        st.image(modified_image, caption="After")
+        image_comparison(img1=Image.open(uploaded_file), img2=modified_image)
+        #st.image(modified_image)
 
         if gps_data is None:
             st.write("No GPS data in image!")

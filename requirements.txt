@@ -1,0 +1,4 @@
+ultralytics
+streamlit_image_comparison
+scikit-image
+imagecodecs
