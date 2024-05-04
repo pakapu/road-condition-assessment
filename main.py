@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_image_comparison import image_comparison
 import numpy as np
 import pandas as pd
 import random
@@ -11,6 +12,9 @@ from ultralytics import YOLO
 BOX_COLORS = [(0, 255, 0), (255, 0, 255)]
 
 CSV_DATA_PATH = './data/'
+V9C_METRICS_PATH = './metrics/v9c/'
+V8S_METRICS_PATH = './metrics/v8s/'
+SAVE_DATA_TO_DISK = True
 
 
 def draw_boxes_on_image(img, results):
@@ -37,12 +41,24 @@ def draw_boxes_on_image(img, results):
                             fill = color)
 
 
+def get_potholes_and_manholes(results):
+    ph = 0
+    mh = 0
+    for result in results:
+        for box in result.boxes.cls.tolist():
+            if int(box) == 0:
+                mh += 1
+            else:
+                ph += 1
+    return ph, mh
+
+
 def get_exif_data(img):
     exif_data = {}
     try:
         data = img._getexif()
         if data is None:
-            st.write("Error: Image does NOT contain any EXIF metadata!")
+            st.write("Warning: Image does NOT contain any EXIF metadata!")
             st.write("If you want to know where the photo was taken please \
                       supply an image that does contain GPS coordinates.")
             return exif_data
@@ -57,11 +73,15 @@ def get_exif_data(img):
             else:
                 exif_data[decoded_tag] = value
     except (IOError, AttributeError, KeyError, IndexError) as err:
+        st.write("Error: ", err)
         print("Error: ", err)
     return exif_data
 
 
 def get_gps_coords(exif_data):
+    if "GPSInfo" not in exif_data.keys():
+        return None
+
     lat_deg, lat_min, lat_sec = exif_data["GPSInfo"]["GPSLatitude"]
     lat_dir = exif_data["GPSInfo"]["GPSLatitudeRef"]
     lon_deg, lon_min, lon_sec = exif_data["GPSInfo"]["GPSLongitude"]
@@ -79,18 +99,42 @@ def get_gps_coords(exif_data):
 
 
 def handle_uploaded_image(uploaded_file):
+    model_choice = st.radio("Pick the model to use",
+                            ["v8s", "v9c"])
+
+    st.write(f"Using the YOLO ***{model_choice}*** model")
+
+    if model_choice == "v8s":
+        model = YOLO("bestv8s.pt")
+    else:
+        model = YOLO("bestv9c.pt")
+
+    assert(model != None)
+
+    show_metrics = st.button("Show selected model's metrics")
     display_image = st.button("Display the image")
-    predict_image = st.button("Predict")
+    predict_image = st.button("Predict and save data")
     map_prediction = st.button("Display position on map")
-    save_gps_data = st.button("Save GPS data")
     st.button("Cancel")
     results = None
 
     exif_data = get_exif_data(Image.open(uploaded_file))
     gps_coords = get_gps_coords(exif_data)
-    gps_data = pd.DataFrame(
-        gps_coords,
-        columns=["LAT", "LON"])
+    if gps_coords is not None:
+        gps_data = pd.DataFrame(
+            gps_coords,
+            columns=["LAT", "LON"])
+    else:
+        gps_data = None
+
+    if show_metrics:
+        if model_choice == "v8s":
+            METRICS_PATH = V8S_METRICS_PATH
+        else:
+            METRICS_PATH = V9C_METRICS_PATH
+        st.image(METRICS_PATH + "confusion_matrix.png")
+        st.image(METRICS_PATH + "P_curve.png")
+        st.image(METRICS_PATH + "results.png")
 
     if display_image:
         st.image(uploaded_file)
@@ -101,20 +145,40 @@ def handle_uploaded_image(uploaded_file):
         modified_image = Image.open(uploaded_file)
 
         draw_boxes_on_image(modified_image, results)
+        ph, mh = get_potholes_and_manholes(results)
+        st.write(f"Potholes: {ph}")
+        st.write(f"Manholes: {mh}")
 
-        st.image(modified_image)
+        st.write("Drag the slider to see the image with/without bounding boxes")
+        image_comparison(img1=Image.open(uploaded_file), img2=modified_image)
+        #st.image(modified_image)
+
+        if gps_data is None:
+            st.write("No GPS data in image!")
+            st.write("Nothing was saved!")
+        else:
+            gps_data["CNT"] = ph
+            st.write("The resulting CSV file contains:")
+            st.write(gps_data)
+            if SAVE_DATA_TO_DISK:
+                gps_data.to_csv(CSV_DATA_PATH + uploaded_file.name + ".csv", index=False)
+                st.write("Data hopefully saved to disk!")
+            st.download_button(
+                label="Download the data",
+                data=gps_data.to_csv(index=False),
+                file_name="data.csv"
+            )
 
     if map_prediction:
-        st.write(gps_data)
-        st.map(gps_data)
+        if gps_data is None:
+            st.write("No GPS data in image!")
+        else:
+            st.write(gps_data)
+            st.map(gps_data)
 
-    if save_gps_data:
-        st.write("Data hopefully saved!")
-        gps_data.to_csv(CSV_DATA_PATH + uploaded_file.name + ".csv")
 
-
-def file_test():
-    uploaded_file = st.file_uploader("This is the file uploader!!!")
+def upload_data():
+    uploaded_file = st.file_uploader("Please upload an image or video file!")
     if uploaded_file is not None:
         handle_uploaded_image(uploaded_file)
     else:
@@ -129,7 +193,7 @@ def gather_all_coords():
     return coords
 
 
-def data_test():
+def view_data():
     uploaded_file = st.file_uploader("Please upload a CSV File!")
 
     if uploaded_file is not None:
@@ -144,14 +208,13 @@ def data_test():
             st.map(all_coords)
 
 
+model = None
 if not os.path.exists(CSV_DATA_PATH):
     os.mkdir(CSV_DATA_PATH)
 
-model = YOLO("best.pt")
-
 pages = {
-    "File upload": file_test,
-    "Show data": data_test
+    "Process an image": upload_data,
+    "View CSV file": view_data
 }
 
 page_name = st.sidebar.selectbox("Choose a page", pages.keys())
