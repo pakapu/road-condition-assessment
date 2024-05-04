@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import random
 import os
+import math
 
 from PIL import Image, ImageDraw
 from PIL.ExifTags import TAGS, GPSTAGS
@@ -86,6 +87,10 @@ def get_gps_coords(exif_data):
     lat_dir = exif_data["GPSInfo"]["GPSLatitudeRef"]
     lon_deg, lon_min, lon_sec = exif_data["GPSInfo"]["GPSLongitude"]
     lon_dir = exif_data["GPSInfo"]["GPSLongitudeRef"]
+
+    # Checks if all coordinates are valid (or at least not NaN)
+    if sum(map(lambda x: type(x) is float and x >= 0, exif_data["GPSInfo"]["GPSLatitude"] + exif_data["GPSInfo"]["GPSLongitude"])) != 6:
+        return None
 
     lat = (float(lat_deg) + lat_min / 60 + lat_sec / 3600)
     lon = (float(lon_deg) + lon_min / 60 + lon_sec / 3600)
