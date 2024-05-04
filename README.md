@@ -3,7 +3,10 @@
 ## Samples
 * Sample images are located in the `samples` directory
 
-## Installation
+## Running the program
+* The streamlit app is located at: https://road-condition-assessment.streamlit.app/
+
+## Local installation
 
 * Clone the repository
 * Create a conda environment
