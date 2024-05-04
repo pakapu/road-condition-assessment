@@ -1,3 +1,4 @@
+opencv-python-headless
 ultralytics
 streamlit_image_comparison
 scikit-image
