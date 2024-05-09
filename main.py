@@ -5,6 +5,7 @@ import pandas as pd
 import random
 import os
 import math
+import base64
 
 from PIL import Image, ImageDraw
 from PIL.ExifTags import TAGS, GPSTAGS
@@ -103,6 +104,37 @@ def get_gps_coords(exif_data):
     return [[lat, lon]]
 
 
+def get_metrics_dataframe():
+    metrics = pd.DataFrame(
+        {
+            "model": ["YOLOv8s", "YOLOv9c"],
+            "confusion_matrix": [None, None],
+            "P_curve": [None, None],
+            "results": [None, None],
+        }
+    )
+
+    # Converting this to base64 was hell
+    # BIG W
+
+    cells = [
+        [V8S_METRICS_PATH + "confusion_matrix.png", [0, "confusion_matrix"]],
+        [V9C_METRICS_PATH + "confusion_matrix.png", [1, "confusion_matrix"]],
+        [V8S_METRICS_PATH + "P_curve.png", [0, "P_curve"]],
+        [V9C_METRICS_PATH + "P_curve.png", [1, "P_curve"]],
+        [V8S_METRICS_PATH + "results.png", [0, "results"]],
+        [V9C_METRICS_PATH + "results.png", [1, "results"]]]
+
+    for cell in cells:
+        current_image = None
+        with open(cell[0], "rb") as f:
+            current_image = base64.b64encode(f.read())
+        current_image = b"data:image/png;base64," + current_image
+        metrics.loc[cell[1][0], cell[1][1]] = current_image.decode("UTF-8")
+
+    return metrics
+
+
 def handle_uploaded_image(uploaded_file):
     model_choice = st.radio("Pick the model to use",
                             ["v8s", "v9c"])
@@ -116,7 +148,7 @@ def handle_uploaded_image(uploaded_file):
 
     assert(model != None)
 
-    show_metrics = st.button("Show selected model's metrics")
+    show_metrics = st.button("Show metrics")
     display_image = st.button("Display the image")
     predict_image = st.button("Predict and save data")
     map_prediction = st.button("Display position on map")
@@ -133,13 +165,25 @@ def handle_uploaded_image(uploaded_file):
         gps_data = None
 
     if show_metrics:
-        if model_choice == "v8s":
-            METRICS_PATH = V8S_METRICS_PATH
-        else:
-            METRICS_PATH = V9C_METRICS_PATH
-        st.image(METRICS_PATH + "confusion_matrix.png")
-        st.image(METRICS_PATH + "P_curve.png")
-        st.image(METRICS_PATH + "results.png")
+        # The height of individual rows appears to not be adjustable, oh well
+        # https://discuss.streamlit.io/t/how-can-i-increase-the-height-of-table-rows-in-st-dataframe/52454
+        metrics = get_metrics_dataframe()
+        st.dataframe(
+            metrics,
+            column_config={
+                "model": "Model",
+                "confusion_matrix": st.column_config.ImageColumn(
+                    "Confusion Matrix",
+                ),
+                "P_curve": st.column_config.ImageColumn(
+                    "Precision Curve"
+                ),
+                "results": st.column_config.ImageColumn(
+                    "All Metrics"
+                )
+            },
+            hide_index=True
+        )
 
     if display_image:
         st.image(uploaded_file)
