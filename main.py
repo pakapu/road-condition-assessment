@@ -1,11 +1,9 @@
 import streamlit as st
 from streamlit_image_comparison import image_comparison
-import numpy as np
 import pandas as pd
-import random
 import os
-import math
 import base64
+import math
 
 from PIL import Image, ImageDraw
 from PIL.ExifTags import TAGS, GPSTAGS
@@ -37,10 +35,9 @@ def draw_boxes_on_image(img, results):
             color = BOX_COLORS[box_type]
 
             # Confidence gradient from black (0) to fully saturated (1)
-            color = tuple(map(lambda x : int(x * all_box_conf[box_no]), color))
+            color = tuple(map(lambda x: int(x * all_box_conf[box_no]), color))
 
-            draw.rectangle(xy = (x0, y0, x1, y1),
-                            fill = color)
+            draw.rectangle(xy=(x0, y0, x1, y1), fill=color)
 
 
 def get_potholes_and_manholes(results):
@@ -66,11 +63,13 @@ def get_exif_data(img):
             return exif_data
         for tag, value in data.items():
             decoded_tag = TAGS.get(tag, tag)
+            # st.write(decoded_tag, value) # Used for debugging
             if decoded_tag == "GPSInfo":
                 gps_data = {}
                 for gps_tag in value:
                     gps_decoded_tag = GPSTAGS.get(gps_tag, gps_tag)
                     gps_data[gps_decoded_tag] = value[gps_tag]
+                # st.write(gps_data) # Used for debugging
                 exif_data[decoded_tag] = gps_data
             else:
                 exif_data[decoded_tag] = value
@@ -90,7 +89,8 @@ def get_gps_coords(exif_data):
     lon_dir = exif_data["GPSInfo"]["GPSLongitudeRef"]
 
     # Checks if all coordinates are valid (or at least not NaN)
-    if sum(map(lambda x: type(x) is float and x >= 0, exif_data["GPSInfo"]["GPSLatitude"] + exif_data["GPSInfo"]["GPSLongitude"])) != 6:
+    if sum(map(lambda x: x >= 0.0 and x <= 360.0, exif_data["GPSInfo"]["GPSLatitude"] + exif_data["GPSInfo"]["GPSLongitude"])) != 6:
+        st.write("GPS Data may be corrupted!")
         return None
 
     lat = (float(lat_deg) + lat_min / 60 + lat_sec / 3600)
@@ -146,7 +146,7 @@ def handle_uploaded_image(uploaded_file):
     else:
         model = YOLO("bestv9c.pt")
 
-    assert(model != None)
+    assert(model is not None)
 
     show_metrics = st.button("Show metrics")
     display_image = st.button("Display the image")
