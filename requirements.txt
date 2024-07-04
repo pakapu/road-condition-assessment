@@ -4,3 +4,4 @@ ultralytics
 streamlit_image_comparison
 scikit-image
 imagecodecs
+openvino==2024.1.0
