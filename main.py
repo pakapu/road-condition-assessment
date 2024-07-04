@@ -3,7 +3,6 @@ from streamlit_image_comparison import image_comparison
 import pandas as pd
 import os
 import base64
-import math
 
 from PIL import Image, ImageDraw
 from PIL.ExifTags import TAGS, GPSTAGS
@@ -142,9 +141,15 @@ def handle_uploaded_image(uploaded_file):
     st.write(f"Using the YOLO ***{model_choice}*** model")
 
     if model_choice == "v8s":
-        model = YOLO("bestv8s.pt")
+        if not os.path.exists("./bestv8s_openvino_model/"):
+            model = YOLO("bestv8s.pt")
+            model.export(format="openvino", imgsz=1280)
+        model = YOLO("./bestv8s_openvino_model/", task='detect')
     else:
-        model = YOLO("bestv9c.pt")
+        if not os.path.exists("./bestv9c_openvino_model/"):
+            model = YOLO("bestv9c.pt")
+            model.export(format="openvino", imgsz=1280)
+        model = YOLO("./bestv9c_openvino_model/", task='detect')
 
     assert(model is not None)
 
@@ -190,7 +195,7 @@ def handle_uploaded_image(uploaded_file):
 
     if predict_image:
         if results is None:
-            results = model.predict(source=Image.open(uploaded_file))
+            results = model.predict(source=Image.open(uploaded_file), imgsz=1280)
         modified_image = Image.open(uploaded_file)
 
         draw_boxes_on_image(modified_image, results)
