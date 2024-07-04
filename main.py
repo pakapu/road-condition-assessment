@@ -136,20 +136,26 @@ def get_metrics_dataframe():
 
 def handle_uploaded_image(uploaded_file):
     model_choice = st.radio("Pick the model to use",
-                            ["v8s", "v9c"])
+                            ["v8s", "v9c", "v8s without OpenVINO"])
 
     st.write(f"Using the YOLO ***{model_choice}*** model")
 
     if model_choice == "v8s":
         if not os.path.exists("./bestv8s_openvino_model/"):
+            st.write("Converting the model to the OpenVINO format might take some time...")
+            st.write("Please wait until some buttons below appear...")
             model = YOLO("bestv8s.pt")
             model.export(format="openvino", imgsz=1280)
         model = YOLO("./bestv8s_openvino_model/", task='detect')
-    else:
+    elif model_choice == "v9c":
         if not os.path.exists("./bestv9c_openvino_model/"):
+            st.write("Converting the model to the OpenVINO format might take some time...")
+            st.write("Please wait until some buttons below appear...")
             model = YOLO("bestv9c.pt")
             model.export(format="openvino", imgsz=1280)
         model = YOLO("./bestv9c_openvino_model/", task='detect')
+    else:
+        model = YOLO("bestv8s.pt")
 
     assert(model is not None)
 
