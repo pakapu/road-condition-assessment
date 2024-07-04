@@ -136,7 +136,7 @@ def get_metrics_dataframe():
 
 def handle_uploaded_image(uploaded_file):
     model_choice = st.radio("Pick the model to use",
-                            ["v8s", "v9c", "v8s without OpenVINO"])
+                            ["v8s without OpenVINO", "v8s", "v9c"])
 
     st.write(f"Using the YOLO ***{model_choice}*** model")
 
