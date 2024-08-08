@@ -5,6 +5,7 @@
 
 ## Running the program
 * The streamlit app is located at: https://road-condition-assessment.streamlit.app/
+  The version on the streamlit servers sometimes stops using opencv headless and completely borks itself
 
 ## Local installation
 
